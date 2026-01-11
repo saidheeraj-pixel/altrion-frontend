@@ -46,7 +46,6 @@ export function PublicOnlyRoute({
   redirectTo = ROUTES.DASHBOARD,
 }: PublicOnlyRouteProps) {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
-  const hasCompletedOnboarding = useAuthStore((state) => state.hasCompletedOnboarding);
   const location = useLocation();
 
   if (isAuthenticated) {

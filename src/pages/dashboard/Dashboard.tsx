@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
@@ -13,8 +13,9 @@ import {
   Check,
 } from 'lucide-react';
 import { Button, Card, Header } from '../../components/ui';
-import { mockPortfolio, mockLoanEligibility, walletPlatforms } from '../../mock/data';
+import { mockPortfolio, mockLoanEligibility } from '../../mock/data';
 import { PLATFORM_ICONS } from '../../constants';
+import type { Asset } from '../../types';
 import { formatCurrency, formatPercent, generateChartData, normalizeChartY, normalizeChartX } from '../../utils';
 import type { ChartPeriod } from '../../utils';
 import { CONTAINER_VARIANTS, ITEM_VARIANTS, ROUTES } from '../../constants';
@@ -24,6 +25,69 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<'all' | 'crypto' | 'stocks' | 'cash'>('all');
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('24H');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [showAccountsDropdown, setShowAccountsDropdown] = useState(false);
+  const [hoveredPoint, setHoveredPoint] = useState<{ index: number; x: number; y: number } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowAccountsDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Aggregate assets by symbol and calculate platforms
+  const aggregatedAssets = useMemo(() => {
+    const assetMap = new Map<string, Asset & { platforms: Set<string> }>();
+
+    mockPortfolio.assets.forEach(asset => {
+      const key = asset.symbol;
+      if (assetMap.has(key)) {
+        const existing = assetMap.get(key)!;
+        existing.amount += asset.amount;
+        existing.value += asset.value;
+        existing.platforms.add(asset.platform);
+      } else {
+        assetMap.set(key, {
+          ...asset,
+          platforms: new Set([asset.platform])
+        });
+      }
+    });
+
+    return Array.from(assetMap.values());
+  }, []);
+
+  // Get connected accounts from aggregated assets
+  const connectedAccounts = useMemo(() => {
+    const platformSet = new Set<string>();
+    mockPortfolio.assets.forEach(asset => {
+      platformSet.add(asset.platform);
+    });
+
+    return Array.from(platformSet).map(platformName => {
+      const platformId = platformName.toLowerCase().replace(/\s+/g, '');
+      return {
+        id: platformId,
+        name: platformName
+      };
+    });
+  }, []);
+
+  // PLATFORM_LOGOS mapping (using PLATFORM_ICONS as base)
+  const PLATFORM_LOGOS: Record<string, string | undefined> = useMemo(() => {
+    const logos: Record<string, string | undefined> = {};
+    Object.entries(PLATFORM_ICONS).forEach(([key, value]) => {
+      if (value.logo) {
+        logos[key] = value.logo;
+      }
+    });
+    return logos;
+  }, []);
 
   // Get selected asset
   const selectedAsset = selectedAssetId
@@ -193,11 +257,10 @@ export function Dashboard() {
                       {formatCurrency(mockPortfolio.totalValue)}
                     </h2>
                     <div
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold mb-2 ${
-                        mockPortfolio.change24h >= 0
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      }`}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold mb-2 ${mockPortfolio.change24h >= 0
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}
                     >
                       {mockPortfolio.change24h >= 0 ? (
                         <TrendingUp size={14} />
@@ -423,11 +486,10 @@ export function Dashboard() {
                     <button
                       key={period}
                       onClick={() => setChartPeriod(period)}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                        chartPeriod === period
-                          ? 'bg-altrion-500 text-text-primary'
-                          : 'text-text-muted hover:text-text-primary'
-                      }`}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${chartPeriod === period
+                        ? 'bg-altrion-500 text-text-primary'
+                        : 'text-text-muted hover:text-text-primary'
+                        }`}
                     >
                       {period}
                     </button>
@@ -607,11 +669,10 @@ export function Dashboard() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                          activeTab === tab
-                            ? 'bg-dark-card text-text-primary'
-                            : 'text-text-muted hover:text-text-primary'
-                        }`}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === tab
+                          ? 'bg-dark-card text-text-primary'
+                          : 'text-text-muted hover:text-text-primary'
+                          }`}
                       >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
                       </button>
@@ -640,9 +701,8 @@ export function Dashboard() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
-                        className={`border-b border-dark-border/50 hover:bg-dark-elevated/50 transition-colors cursor-pointer ${
-                          selectedAssetId === asset.id ? 'bg-altrion-500/10' : ''
-                        }`}
+                        className={`border-b border-dark-border/50 hover:bg-dark-elevated/50 transition-colors cursor-pointer ${selectedAssetId === asset.id ? 'bg-altrion-500/10' : ''
+                          }`}
                         onClick={() => setSelectedAssetId(selectedAssetId === asset.id ? null : asset.id)}
                       >
                         <td className="px-5 py-3">
@@ -667,9 +727,8 @@ export function Dashboard() {
                         </td>
                         <td className="px-5 py-3">
                           <span
-                            className={`${
-                              asset.change24h >= 0 ? 'text-green-400' : 'text-red-400'
-                            }`}
+                            className={`${asset.change24h >= 0 ? 'text-green-400' : 'text-red-400'
+                              }`}
                           >
                             {formatPercent(asset.change24h)}
                           </span>
@@ -705,9 +764,9 @@ export function Dashboard() {
                               </div>
                             ))}
                             {/* Plus button for additional wallets */}
-                            {asset.platforms.length > 3 ? (
+                            {asset.platforms.size > 3 ? (
                               <div className="w-8 h-8 rounded-full bg-dark-elevated border-2 border-dark-border flex items-center justify-center cursor-pointer hover:bg-dark-card transition-colors">
-                                <span className="text-xs font-bold text-text-muted">+{asset.platforms.length - 3}</span>
+                                <span className="text-xs font-bold text-text-muted">+{asset.platforms.size - 3}</span>
                               </div>
                             ) : (
                               <div className="w-8 h-8 rounded-full bg-dark-elevated border-2 border-dashed border-dark-border flex items-center justify-center cursor-pointer hover:bg-dark-card hover:border-altrion-500/50 transition-colors">

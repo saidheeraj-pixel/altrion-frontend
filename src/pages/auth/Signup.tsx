@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Check, Shield, Users, Zap } from 'lucide-react';
@@ -12,7 +11,6 @@ import type { SignupFormData } from '../../types';
 export function Signup() {
   const navigate = useNavigate();
   const { showPassword, togglePassword, inputType } = usePasswordToggle();
-  const { mutate: signup, isPending: loading } = useSignup();
   const { values: form, updateValue } = useForm<SignupFormData>({
     name: '',
     email: '',
@@ -25,14 +23,12 @@ export function Signup() {
     form.confirmPassword
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    setLoading(false);
     navigate(ROUTES.ONBOARDING);
   };
 
@@ -180,9 +176,8 @@ export function Signup() {
               className="flex items-center gap-2 text-xs"
             >
               <div
-                className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-colors ${
-                  req.met ? 'bg-altrion-500' : 'bg-dark-border'
-                }`}
+                className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-colors ${req.met ? 'bg-altrion-500' : 'bg-dark-border'
+                  }`}
               >
                 {req.met && <Check size={10} className="text-text-primary" />}
               </div>
@@ -224,7 +219,6 @@ export function Signup() {
             type="submit"
             fullWidth
             size="lg"
-            loading={loading}
             disabled={!passwordRequirements.every(r => r.met)}
           >
             Create Account

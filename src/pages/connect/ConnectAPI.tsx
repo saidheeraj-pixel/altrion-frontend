@@ -56,7 +56,7 @@ export function ConnectAPI() {
   );
   const [credentials, setCredentials] = useState({ username: '', password: '' });
 
-  const { connections, allComplete, successCount, retryConnection } = useConnectionStatus({
+  const { connections, successCount, retryConnection } = useConnectionStatus({
     platformIds: selectedPlatformIds,
     autoStart: false,
   });
@@ -144,11 +144,10 @@ export function ConnectAPI() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 text-left ${
-                        isSelected
+                      className={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 text-left ${isSelected
                           ? 'border-altrion-500 bg-altrion-500/10'
                           : 'border-dark-border bg-dark-card hover:border-dark-border/80'
-                      }`}
+                        }`}
                     >
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
                         {logo ? (
